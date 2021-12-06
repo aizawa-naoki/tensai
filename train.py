@@ -13,8 +13,8 @@ from datetime import datetime
 import numpy as np
 
 base_path = './dataset/'  # should end with "/"
-batch_size = 12
-num_epochs = 3
+batch_size = 24
+num_epochs = 5
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
 def data_2_text(data):
@@ -81,8 +81,8 @@ lr_scheduler = get_scheduler("linear", optimizer=optimizer, num_warmup_steps=0, 
 
 save_folder = f"models/{datetime.now().strftime('%y_%m_%d_%Hh')}"
 progress_bar = tqdm(range(num_training_steps))
-model.train()
 for epoch in range(num_epochs):
+    model.train()
     for batch in train_dataloader:
         batch = {k : v.to(device) for k, v in batch.items()}
         loss = model(**batch).loss
@@ -93,21 +93,19 @@ for epoch in range(num_epochs):
         progress_bar.update(1)
     if epoch == 0:
         tokenizer.save_pretrained(f"{save_folder}/tokenizer")
-    model.save_pretrained(f"{save_folder}/run_{epoch}")
+    model.save_pretrained(f"{save_folder}/run_{epoch+1}")
+    metric = load_metric("accuracy")
+    model.eval()
+    for batch in eval_dataloader:
+        batch = {k : v.to(device) for k, v in batch.items()}
+        with torch.no_grad():
+            outputs = model(**batch)
+        logits = outputs.logits
+        predictions = torch.argmax(logits, dim=-1)
+        metric.add_batch(predictions=predictions, references=batch["labels"])
+    print(f"eval_acc of {epoch+1} epoch:{metric.compute()}")
 
-
-metric = load_metric("accuracy")
-model.eval()
-for batch in eval_dataloader:
-    batch = {k : v.to(device) for k, v in batch.items()}
-    with torch.no_grad():
-        outputs = model(**batch)
-    logits = outputs.logits
-    predictions = torch.argmax(logits, dim=-1)
-    metric.add_batch(predictions=predictions, references=batch["labels"])
-metric.compute()
-
-
+"""
 preds = []
 model.eval()
 for batch in test_dataloader:
@@ -123,3 +121,5 @@ flat_preds = np.array(flat_preds)
 sub = pd.read_csv(base_path + 'sample_submission.csv')
 sub['target'] = flat_preds
 sub.to_csv('submission.csv', index=False)
+"""
+
