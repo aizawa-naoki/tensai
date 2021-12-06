@@ -116,12 +116,10 @@ for batch in test_dataloader:
         outputs = model(**batch)
     logits = outputs.logits
     preds.append(torch.argmax(logits, dim=-1))
-print(preds)
 
 
 flat_preds = [item.cpu().numpy() for batch in preds for item in batch]
 flat_preds = np.array(flat_preds)
-print(flat_preds)
 sub = pd.read_csv(base_path + 'sample_submission.csv')
 sub['target'] = flat_preds
 sub.to_csv('submission.csv', index=False)
