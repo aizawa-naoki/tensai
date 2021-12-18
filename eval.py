@@ -16,9 +16,6 @@ from utils import data_2_text, data_2_target, BERTDataset
 def __print_result_to_csv(expected: [], actual: []) -> None:
     output_pathname = "output.csv"
 
-    print(len(expected))
-    print(len(actual))
-
     if os.path.exists(output_pathname):
         os.remove(output_pathname)
 
