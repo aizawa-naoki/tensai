@@ -1,10 +1,8 @@
 import csv
-import socket
 
-import numpy as np
 import pandas as pd
 
-from tensai.utils import get_link_page_title, replace_http_tag
+from utils import get_link_page_title
 
 
 # Sanitize title for comma-formatted csv
@@ -31,29 +29,26 @@ def __convert_array_title_to_str(input: []) -> str:
 # print(sanitized)
 
 
-INPUT_FILEPATH = "./dataset/train.csv"
-OUTPUT_FILEPATH = "./dataset/page_title.csv"
+INPUT_FILEPATH = "dataset/train.csv"
+OUTPUT_FILEPATH = INPUT_FILEPATH.split(".")[0] + "_title.csv"
 
 train_data = pd.read_csv(INPUT_FILEPATH)
-title_data = pd.read_csv(OUTPUT_FILEPATH, encoding="utf-16")
 
 id_array = train_data["id"].values
 
 text_array = train_data["text"]
 
-with open(OUTPUT_FILEPATH, 'a+', newline='') as csvfile:
+
+with open(OUTPUT_FILEPATH, 'a+', encoding="utf-8") as csvfile:
     writer = csv.writer(csvfile, delimiter=',',
                         quotechar='|', quoting=csv.QUOTE_MINIMAL)
 
-    # writer.writerow(["id", "page_title"])
+    writer.writerow(["id", "page_title"])
 
-    for i in range(4827, len(id_array)):
-        print(str(i) + " - " + str(id_array[i]))
-        titles = get_link_page_title(text_array[i])
+    for i, (ident, text) in enumerate(zip(id_array, text_array)):
+        print(f"{i} - {ident}")
+        titles = get_link_page_title(text)
         concat_title = __convert_array_title_to_str(titles)
-        try:
-            writer.writerow([str(id_array[i]), concat_title])
-        except UnicodeEncodeError:
-            writer.writerow([str(id_array[i]), ""])
+        writer.writerow([str(ident), concat_title])
 
 

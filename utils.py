@@ -1,18 +1,16 @@
 from http.client import IncompleteRead
 from urllib.error import HTTPError, URLError
+import requests
+from bs4 import BeautifulSoup
+import re
 
 from torch.utils.data import Dataset
 import torch
-import requests
 
-from urllib.request import urlopen
 
-from bs4 import BeautifulSoup
-from lxml import html
-from mechanize import Browser
-import re
-
-SHORTENED_URL_PATTERN = "(http://(t\.co)/\S*)"
+SHORTENED_URL_PATTERN = r"(https?://t\.co/[a-zA-Z0-9]*)"
+PHOTO_URL_PATTERN = r"https?://twitter\.com/[^/]*/status/[0-9]*/photo/[0-9]*"
+VIDEO_URL_PATTERN = r"https?://twitter\.com/[^/]*/status/[0-9]*/video/[0-9]*"
 
 
 def data_2_text(data):
@@ -31,42 +29,31 @@ def data_2_target(data):
     return data['target'].values
 
 
-def replace_http_tag(input: str, replacement_tag: str = "") -> str:
-    result = re.sub(SHORTENED_URL_PATTERN, replacement_tag, input)
-
-    return result
+def replace_http_tag(text: str, replacement_tag: str = "") -> str:
+    return re.sub(SHORTENED_URL_PATTERN, replacement_tag, text)
 
 
-def get_link_page_title(input: str) -> [str]:
-    return_array = []
+def get_link_page_title(text: str) -> [str]:
+    title_array = []
 
-    matches = re.findall(SHORTENED_URL_PATTERN, input)
+    matches = re.findall(SHORTENED_URL_PATTERN, text)
 
-    for match in matches:
-
-        url = match[0]
-
+    for url in matches:
         try:
-            soup = BeautifulSoup(urlopen(url, timeout=15), features="lxml")
-            title = soup.title
+            res = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=(4.0, 7.5))
+            print(res.url)
 
-            if title is None:
-                return_array.append("")
-                continue
-
-            return_array.append(title.get_text())
-        except HTTPError:
-            return_array.append("")
-        except UnicodeEncodeError:
-            return_array.append("")
-        except URLError:
-            return_array.append("")
-        except IncompleteRead:
-            return_array.append("")
-        except Exception:
-            return_array.append("")
-
-    return return_array
+            if re.match(PHOTO_URL_PATTERN, res.url):
+                title_array.append("PHOTO")
+            elif re.match(VIDEO_URL_PATTERN, res.url):
+                title_array.append("VIDEO")
+            else:
+                title = BeautifulSoup(res.text, "lxml").title
+                title_array.append(title.string.replace("|", "-") if title is not None else "")
+        except Exception as inst:
+            print(f"exception on {url} \n\t: {type(inst)}")
+            title_array.append("")
+    return title_array
 
 
 class BERTDataset(Dataset):
