@@ -8,25 +8,41 @@ from torch.utils.data import Dataset
 import torch
 
 
+
 SHORTENED_URL_PATTERN = r"(https?://t\.co/[a-zA-Z0-9]*)"
 PHOTO_URL_PATTERN = r"https?://twitter\.com/[^/]*/status/[0-9]*/photo/[0-9]*"
 VIDEO_URL_PATTERN = r"https?://twitter\.com/[^/]*/status/[0-9]*/video/[0-9]*"
 
 
+
+def add_category(text):
+    output_list=[]
+    for t in text:
+        if "http" in t:
+            output_list.append("[CATEGORY_1] "+str(t))
+        else:
+            output_list.append("[CATEGORY_0] "+str(t))
+    return output_list
+ 
+def add_keyword(text,keyword):
+    output_list=[]
+    for k,t in zip(keyword,text):
+        output_list.append(str(k)+" [SEP] "+str(t))
+    return output_list
+ 
+
 def data_2_text(data):
     data = data.dropna(subset=['keyword', 'text'])
     keyword = data['keyword'].values
     text = data['text'].values
-
-    tokenizer_text = []
-    for k, t in zip(keyword, text):
-        tokenizer_text.append(str(k) + " [SEP] " + str(t))
+    text = add_keyword(text,keyword)
+    tokenizer_text = add_category(text)
     return tokenizer_text
-
-
+ 
 def data_2_target(data):
     data = data.dropna(subset=['keyword', 'text'])
     return data['target'].values
+
 
 
 def replace_http_tag(text: str, replacement_tag: str = "") -> str:
@@ -60,21 +76,21 @@ class BERTDataset(Dataset):
     def __init__(self, text, target, tokenizer):
         self.target = target
         self.dict = tokenizer(text, padding=True, truncation=True)
-
+ 
     def __len__(self):
         return len(self.dict['input_ids'])
-
+ 
     def __getitem__(self, ids):
         if (self.target is None):
             return {
-                'input_ids': torch.tensor(self.dict['input_ids'][ids], dtype=torch.long),
-                'token_type_ids': torch.tensor(self.dict['token_type_ids'][ids], dtype=torch.long),
-                'attention_mask': torch.tensor(self.dict['attention_mask'][ids], dtype=torch.long),
-            }
-        else:
+            'input_ids' : torch.tensor(self.dict['input_ids'][ids], dtype=torch.long),
+            'token_type_ids' : torch.tensor(self.dict['token_type_ids'][ids], dtype=torch.long),
+            'attention_mask' : torch.tensor(self.dict['attention_mask'][ids], dtype=torch.long),
+        }
+        else :
             return {
-                'input_ids': torch.tensor(self.dict['input_ids'][ids], dtype=torch.long),
-                'token_type_ids': torch.tensor(self.dict['token_type_ids'][ids], dtype=torch.long),
-                'attention_mask': torch.tensor(self.dict['attention_mask'][ids], dtype=torch.long),
-                'labels': torch.tensor(self.target[ids], dtype=torch.long)
-            }
+            'input_ids' : torch.tensor(self.dict['input_ids'][ids], dtype=torch.long),
+            'token_type_ids' : torch.tensor(self.dict['token_type_ids'][ids], dtype=torch.long),
+            'attention_mask' : torch.tensor(self.dict['attention_mask'][ids], dtype=torch.long),
+            'labels' : torch.tensor(self.target[ids], dtype=torch.long)
+        }
